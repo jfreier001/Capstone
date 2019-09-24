@@ -1,0 +1,48 @@
+---
+title: "Project2"
+author: "Jack Freier"
+date: "9/23/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Libraries
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(splines)
+```
+
+```{r}
+# Read .csv files into R
+Before_2016_Data = read.csv(file = 'WHO_NREVSS_Combined_prior_to_2015_16.csv', header = FALSE)
+After_2016_PHL_Data = read.csv(file = 'WHO_NREVSS_Public_Health_Labs.csv', header = FALSE)
+After_2016_CL_Data = read.csv(file = 'WHO_NREVSS_Clinical_Labs.csv', header = FALSE)
+ILINet_Data = read.csv(file = 'ILINet.csv', header = FALSE)
+
+# Create a data frame
+Before_2016_DF = data.frame(Year = Before_2016_Data$V3,
+                Week = Before_2016_Data$V4,
+                Specimens = Before_2016_Data$V5,
+                Percent_Positive = Before_2016_Data$V6,
+                H1N1 = Before_2016_Data$V7,
+                H1 = Before_2016_Data$V8,
+                H3 = Before_2016_Data$V9,
+                Didnt_Subtype = Before_2016_Data$V10,
+                Cant_Subtype = Before_2016_Data$V11,
+                B = Before_2016_Data$V12,
+                H3N2v = Before_2016_Data$V13)
+
+
+# Before_2016_DF = Before_2016_DF %>%
+#   mutate(Infected = H1N1 + H1 + H3 + Didnt_Subtype + Cant_Subtype + B + H3N2v)
+# 
+# Before_2016_DF = Before_2016_DF %>%
+#   mutate(Time = Year + (Week - 1) / 52)
+
+#Before_2016_DF[, c(15, 1 ,2, 14, 3, 4)]
+```
