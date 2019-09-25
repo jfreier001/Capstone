@@ -18,6 +18,24 @@ library(splines)
 ```
 
 ```{r}
+# Read the Energy_Statistics.csv file into R
+Energy_Data = read.csv(file = 'Energy_Statistics.csv', header = FALSE)
+
+# Transform it into a data frame
+Energy_Frame = data.frame(Country = Energy_Data$V1,
+                          Year = Energy_Data$V3,
+                          Quantity = Energy_Data$V5,
+                          Transaction = Energy_Data$V2,
+                          Category = Energy_Data$V7,
+                          Unit = Energy_Data$V4)
+
+US_Energy = Energy_Frame %>%
+  filter(Country == "United States")
+```
+
+
+
+```{r}
 # Read the Climate_Data.csv file into R
 Climate_Data = read.csv(file = 'Climate_Data.csv', header = FALSE)
 
