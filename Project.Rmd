@@ -21,7 +21,7 @@ library(splines)
 # Read the Climate_Data.csv file into R
 Climate_Data = read.csv(file = 'Climate_Data.csv', header = FALSE)
 
-# Transform wordTrends into a data frame
+# Transform into a data frame
 Climate_Frame = data.frame(Date = Climate_Data$V3,
                            Precip = Climate_Data$V4,
                            Snow = Climate_Data$V5,
@@ -51,6 +51,7 @@ Climate_Frame = Climate_Frame %>%
 # Reorder columns
 Climate_Frame = Climate_Frame[c(1,2,8,5,7,6,3,4)]
 
+# Plot the data
 Climate_Frame %>%
   ggplot(aes(x = Time, y = Temp_Avg)) +
   geom_point(size = 0.5) +
@@ -69,42 +70,46 @@ Data_2 = read.csv(file = 'MER_T07_01.csv', header = FALSE)
 Data_3 = read.csv(file = 'MER_T07_06.csv', header = FALSE)
 Data_4 = read.csv(file = 'MER_T09_08.csv', header = FALSE)
 
-# # Transform wordTrends into a data frame
-# Climate_Frame = data.frame(Date = Climate_Data$V3,
-#                            Precip = Climate_Data$V4,
-#                            Snow = Climate_Data$V5,
-#                            Temp_Avg = Climate_Data$V6,
-#                            Temp_Min = Climate_Data$V8,
-#                            Temp_Max = Climate_Data$V7)
-# 
-# # Extract relevant rows and reindex
-# Climate_Frame = Climate_Frame[-1,]
-# rownames(Climate_Frame) = NULL
-# 
-# # Turn entries into numeric values
-# Climate_Frame$Precip = as.numeric(as.character(Climate_Frame$Precip))
-# Climate_Frame$Snow = as.numeric(as.character(Climate_Frame$Snow))
-# Climate_Frame$Temp_Avg = as.numeric(as.character(Climate_Frame$Temp_Avg))
-# Climate_Frame$Temp_Min = as.numeric(as.character(Climate_Frame$Temp_Min))
-# Climate_Frame$Temp_Max = as.numeric(as.character(Climate_Frame$Temp_Max))
-# 
-# # Separate 'Date' variable into 'Year' and 'Month'
-# Climate_Frame = Climate_Frame %>%
-#   separate(Date, c("Year", "Month"), sep = "-", remove = TRUE, convert = TRUE)
-# 
-# # Create a continuous 'Time' variable
-# Climate_Frame = Climate_Frame %>%
-#   mutate(Time = Year + (Month - 1) / 12)
-# 
-# # Reorder columns
-# Climate_Frame = Climate_Frame[c(1,2,8,5,7,6,3,4)]
-# 
-# Climate_Frame %>%
-#   ggplot(aes(x = Time, y = Temp_Avg)) +
-#   geom_point(size = 0.5) +
-#   geom_line() +
-#   labs(x = "Time", y = "Average Temperature (Fahrenheit)") +
-#   ggtitle("Average Temperature of Duluth, MN") +
-#   lims(x = c(1980, 2020), y = c(-5, 75)) +
-#   theme_minimal()
+# Transform wordTrends into a data frame
+DF = data.frame(Date = Data_1$V2,
+                Value = Data_1$V3,
+                Units = Data_1$V6,
+                Description = Data_1$V5,
+                MSN = Data_1$V1)
+
+# Extract relevant rows and reindex
+DF = DF[-1,]
+rownames(DF) = NULL
+
+# Turn entries into numeric values
+DF$Date = as.numeric(as.character(DF$Date))
+DF$Value = as.numeric(as.character(DF$Value))
+
+# Separate 'Date' variable into 'Year' and 'Month'
+DF = DF %>%
+  separate(Date, c("Year", "Month"), sep = 4, remove = TRUE, convert = TRUE)
+
+# Create a continuous 'Time' variable
+DF = DF %>%
+  mutate(Time = Year + (Month - 1) / 12)
+
+# Reorder columns
+DF = DF[c(1, 2, 7, 3, 4, 5, 6)]
+
+# Filter
+DF = DF %>%
+  filter(Month %in% c(1:12)) %>%
+  filter(Description == "Coal Consumption") %>%
+  filter(complete.cases(.))
+
+# Plot the time series
+DF %>%
+  ggplot(aes(x = Time, y = Value)) +
+  geom_point(size = 0.5) +
+  geom_line() +
+  labs(x = "Year", y = "Coal Consumption (Thousand Tons)") +
+  ggtitle("National Coal Consumption -- 1973 to 2019") +
+  scale_x_continuous(breaks = c(seq(1975, 2020, 5)), limits = c(1975, 2020)) +
+  scale_y_continuous(breaks = c(seq(40000, 110000, 10000)), limits = c(40000, 110000)) +
+  theme_minimal()
 ```
