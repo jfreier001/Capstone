@@ -10,57 +10,15 @@ knitr::opts_chunk$set(echo = TRUE, error=TRUE)
 ```
 
 ```{r}
+knitr::opts_chunk$set(echo = TRUE, error=TRUE)
+
 # Libraries
 library(dplyr)
+library(lubridate)
+library(stringr)
 library(ggplot2)
 library(tidyr)
 library(splines)
-```
-
-
-```{r}
-# Read the Climate_Data.csv file into R
-Climate_Data = read.csv(file = 'Climate_Data.csv', header = FALSE)
-
-# Transform into a data frame
-Climate_Frame = data.frame(Date = Climate_Data$V3,
-                           Precip = Climate_Data$V4,
-                           Snow = Climate_Data$V5,
-                           Temp_Avg = Climate_Data$V6,
-                           Temp_Min = Climate_Data$V8,
-                           Temp_Max = Climate_Data$V7)
-
-# Extract relevant rows and reindex
-Climate_Frame = Climate_Frame[-1,]
-rownames(Climate_Frame) = NULL
-
-# Turn entries into numeric values
-Climate_Frame$Precip = as.numeric(as.character(Climate_Frame$Precip))
-Climate_Frame$Snow = as.numeric(as.character(Climate_Frame$Snow))
-Climate_Frame$Temp_Avg = as.numeric(as.character(Climate_Frame$Temp_Avg))
-Climate_Frame$Temp_Min = as.numeric(as.character(Climate_Frame$Temp_Min))
-Climate_Frame$Temp_Max = as.numeric(as.character(Climate_Frame$Temp_Max))
-
-# Separate 'Date' variable into 'Year' and 'Month'
-Climate_Frame = Climate_Frame %>%
-  separate(Date, c("Year", "Month"), sep = "-", remove = TRUE, convert = TRUE)
-
-# Create a continuous 'Time' variable
-Climate_Frame = Climate_Frame %>%
-  mutate(Time = Year + (Month - 1) / 12)
-
-# Reorder columns
-Climate_Frame = Climate_Frame[c(1,2,8,5,7,6,3,4)]
-
-# Plot the data
-Climate_Frame %>%
-  ggplot(aes(x = Time, y = Temp_Avg)) +
-  geom_point(size = 0.5) +
-  geom_line() +
-  labs(x = "Time", y = "Average Temperature (Fahrenheit)") +
-  ggtitle("Average Temperature of Duluth, MN") +
-  lims(x = c(1980, 2020), y = c(-5, 75)) +
-  theme_minimal()
 ```
 
 
@@ -71,7 +29,7 @@ Data_2 = read.csv(file = 'MER_T07_01.csv', header = FALSE)
 Data_3 = read.csv(file = 'MER_T07_06.csv', header = FALSE)
 Data_4 = read.csv(file = 'MER_T09_08.csv', header = FALSE)
 
-# Transform wordTrends into a data frame
+# Transform into a data frame
 DF = data.frame(Date = Data_1$V2,
                 Value = Data_1$V3,
                 Units = Data_1$V6,
@@ -102,6 +60,9 @@ DF = DF %>%
   filter(Month %in% c(1:12)) %>%
   filter(Description == "Coal Consumption") %>%
   filter(complete.cases(.))
+
+# Create a time series object
+DFTS = ts(DF$Value, start = c(1973, 1), frequency = 12)
 
 # Plot the time series
 DF %>%
