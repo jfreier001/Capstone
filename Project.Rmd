@@ -9,69 +9,262 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE, error=TRUE)
 ```
 
-```{r}
-knitr::opts_chunk$set(echo = TRUE, error=TRUE)
-
+```{r message=FALSE}
 # Libraries
 library(dplyr)
 library(lubridate)
 library(stringr)
 library(ggplot2)
 library(tidyr)
+library(astsa)
 library(splines)
 ```
 
 
 ```{r}
 # Read the .csv files into R
-Data_1 = read.csv(file = 'MER_T06_01.csv', header = FALSE)
-Data_2 = read.csv(file = 'MER_T07_01.csv', header = FALSE)
-Data_3 = read.csv(file = 'MER_T07_06.csv', header = FALSE)
-Data_4 = read.csv(file = 'MER_T09_08.csv', header = FALSE)
+Data_Coal = read.csv(file = 'MER_T06_01.csv', header = FALSE)
+Data_Gas = read.csv(file = 'MER_T04_01.csv', header = FALSE)
 
-# Transform into a data frame
-DF = data.frame(Date = Data_1$V2,
-                Value = Data_1$V3,
-                Units = Data_1$V6,
-                Description = Data_1$V5,
-                MSN = Data_1$V1)
+
+# Transform coal data into a data frame
+DF_Coal = data.frame(Date = Data_Coal$V2,
+                Value = Data_Coal$V3,
+                Units = Data_Coal$V6,
+                Description = Data_Coal$V5,
+                MSN = Data_Coal$V1)
+
+# Transform natural gas data into a data frame
+DF_Gas = data.frame(Date = Data_Gas$V2,
+                Value = Data_Gas$V3,
+                Units = Data_Gas$V6,
+                Description = Data_Gas$V5,
+                MSN = Data_Gas$V1)
+
 
 # Extract relevant rows and reindex
-DF = DF[-1,]
-rownames(DF) = NULL
+DF_Coal = DF_Coal[-1,]
+rownames(DF_Coal) = NULL
+
+DF_Gas = DF_Gas[-1,]
+rownames(DF_Gas) = NULL
+
 
 # Turn entries into numeric values
-DF$Date = as.numeric(as.character(DF$Date))
-DF$Value = as.numeric(as.character(DF$Value))
+DF_Coal$Date = as.numeric(as.character(DF_Coal$Date))
+DF_Coal$Value = as.numeric(as.character(DF_Coal$Value))
+
+DF_Gas$Date = as.numeric(as.character(DF_Gas$Date))
+DF_Gas$Value = as.numeric(as.character(DF_Gas$Value))
+
 
 # Separate 'Date' variable into 'Year' and 'Month'
-DF = DF %>%
+DF_Coal = DF_Coal %>%
   separate(Date, c("Year", "Month"), sep = 4, remove = TRUE, convert = TRUE)
 
+DF_Gas = DF_Gas %>%
+  separate(Date, c("Year", "Month"), sep = 4, remove = TRUE, convert = TRUE)
+
+
 # Create a continuous 'Time' variable
-DF = DF %>%
+DF_Coal = DF_Coal %>%
   mutate(Time = Year + (Month - 1) / 12)
 
-# Reorder columns
-DF = DF[c(1, 2, 7, 3, 4, 5, 6)]
+DF_Gas = DF_Gas %>%
+  mutate(Time = Year + (Month - 1) / 12)
 
-# Filter
-DF = DF %>%
+
+# Reorder columns
+DF_Coal = DF_Coal[c(1, 2, 7, 3, 4, 5, 6)]
+
+DF_Gas = DF_Gas[c(1, 2, 7, 3, 4, 5, 6)]
+
+
+# Filter out annual totals, revelant variables, and incomplete cases
+DF_Coal = DF_Coal %>%
   filter(Month %in% c(1:12)) %>%
   filter(Description == "Coal Consumption") %>%
   filter(complete.cases(.))
 
-# Create a time series object
-DFTS = ts(DF$Value, start = c(1973, 1), frequency = 12)
+DF_Gas = DF_Gas %>%
+  filter(Month %in% c(1:12)) %>%
+  filter(Description == "Natural Gas Consumption") %>%
+  filter(complete.cases(.))
 
-# Plot the time series
-DF %>%
+
+# Create a time series object
+DF_CoalTS = ts(DF_Coal$Value, start = c(1973, 1), frequency = 12)
+DF_GasTS = ts(DF_Gas$Value, start = c(1973, 1), frequency = 12)
+```
+
+```{r}
+# Plot the time series coal data
+DF_Coal %>%
   ggplot(aes(x = Time, y = Value)) +
-  geom_point(size = 0.5) +
+  geom_point(size = 1) +
   geom_line() +
-  labs(x = "Year", y = "Coal Consumption (Thousand Tons)") +
-  ggtitle("National Coal Consumption -- 1973 to 2019") +
-  scale_x_continuous(breaks = c(seq(1975, 2020, 5)), limits = c(1975, 2020)) +
-  scale_y_continuous(breaks = c(seq(40000, 110000, 10000)), limits = c(40000, 110000)) +
+  labs(x = "Year", y = "Coal Consumption   (Thousand Short Tons)") +
+  ggtitle("National Coal Consumption - 1973 to 2019") +
+  scale_x_continuous(breaks = c(seq(1975, 2021, 5)), limits = c(1973, 2021)) +
+  scale_y_continuous(breaks = c(seq(35000, 110000, 10000)), limits = c(35000, 110000)) +
   theme_minimal()
+
+# Plot the time series natural gas data
+DF_Gas %>%
+  ggplot(aes(x = Time, y = Value)) +
+  geom_point(size = 1) +
+  geom_line() +
+  labs(x = "Year", y = "Natural Gas Consumption   (Billion Cubic Feet)") +
+  ggtitle("National Natural Gas Consumption - 1973 to 2019") +
+  scale_x_continuous(breaks = c(seq(1975, 2021, 5)), limits = c(1973, 2021)) +
+  scale_y_continuous(breaks = c(seq(750, 3500, 500)), limits = c(750, 3500)) +
+  theme_minimal()
+```
+
+```{r}
+# Coal Trend - Spline Fit
+splineTrendCoal = lm(Value ~ bs(Time, degree = 2, knots = c(2006, 2010),
+                            Boundary.knots = c(1973, 2021.834)), data = DF_Coal)
+
+DF_Coal = DF_Coal %>%
+  mutate(Trend = predict(splineTrendCoal))
+
+# Plot the coal series with trend fit
+DF_Coal %>%
+  ggplot(aes(x = Time, y = Value)) +
+  geom_point() +
+  scale_x_continuous(breaks = c(seq(1975, 2020, 5)), limits = c(1973, 2020)) +
+  scale_y_continuous(breaks = c(seq(35000, 110000, 10000)), limits = c(35000, 110000)) +
+  labs(x = "Year", y = "Coal Consumption   (Thousand Short Tons)") +
+  ggtitle("National Coal Consumption - Spline Fit") +
+  geom_line(aes(x = Time, y = Trend), color = "purple", size = 0.75) +
+  theme_minimal()
+
+
+# Natural Gas Trend - Spline Fit
+splineTrendGas = lm(Value ~ bs(Time, degree = 2, knots = c(1980, 1985, 1995, 2000),
+                            Boundary.knots = c(1973, 2021.834)), data = DF_Gas)
+
+DF_Gas = DF_Gas %>%
+  mutate(Trend = predict(splineTrendGas))
+
+# Plot the natural gas series with trend fit
+DF_Gas %>%
+  ggplot(aes(x = Time, y = Value)) +
+  geom_point() +
+  scale_x_continuous(breaks = c(seq(1975, 2021, 5)), limits = c(1973, 2021)) +
+  scale_y_continuous(breaks = c(seq(750, 3500, 500)), limits = c(750, 3500)) +
+  labs(x = "Year", y = "Natural Gas Consumption   (Billion Cubic Feet)") +
+  ggtitle("National Natural Gas Consumption - Spline Fit") +
+  geom_line(aes(x = Time, y = Trend), color = "purple", size = 0.75) +
+  theme_minimal()
+```
+
+```{r}
+# De-Trended Coal - Spline Fit
+DF_Coal = DF_Coal %>%
+  mutate(Residuals = Value - Trend)
+
+# Plot coal data after removing trend (by Month and Year)
+DF_Coal %>%
+  ggplot(aes(x = factor(Month), y = Residuals, color = factor(Year))) +
+  geom_line(aes(group = factor(Year)), size = 0.75) +
+  scale_y_continuous(breaks = c(seq(-25000, 25000, 5000)), limits = c(-25000, 25000)) +
+  ggtitle("De-Trended Coal Observations") +
+  labs(x = "Month", y = "Coal Residuals   (Thousand Short Tons)", color = "Year") +
+  theme_minimal()
+
+
+# De-Trended Gas - Spline Fit
+DF_Gas = DF_Gas %>%
+  mutate(Residuals = Value - Trend)
+
+# Plot coal data after removing trend (by Month and Year)
+DF_Gas %>%
+  ggplot(aes(x = factor(Month), y = Residuals, color = factor(Year))) +
+  geom_line(aes(group = factor(Year)), size = 0.75) +
+  scale_y_continuous(breaks = c(seq(-750, 1250, 250)), limits = c(-750, 1250)) +
+  ggtitle("De-Trended Natural Gas Observations") +
+  labs(x = "Month", y = "Natural Gas Residuals   (Billion Cubic Feet)", color = "Year") +
+  theme_minimal()
+```
+
+```{r}
+# Coal - Create a categorical variable splitting Year into two subgroups
+DF_Coal$Before2008 = cut(DF_Coal$Year, c(1972, 2007, 2019), labels = c("YES", "NO"))
+
+# Create a factored 'Month' variable for coal
+DF_Coal = DF_Coal %>%
+  mutate(Month = factor(Month))
+
+# Create a model for coal seasonality
+Coal_Season = lm(DF_Coal$Residuals ~ Month * Before2008, data = DF_Coal)
+
+DF_Coal = DF_Coal %>%
+  mutate(Season = predict(Coal_Season, newdata = data.frame(Month = DF_Coal$Month,
+                                                       Before2008 = DF_Coal$Before2008))) %>%
+  mutate(Residuals.SE = Residuals - Season)
+
+# Coal residual series after removing trend and seasonality
+DF_Coal %>%
+  ggplot(aes(x = Time, y = Residuals.SE)) +
+  geom_point(na.rm = TRUE) +
+  geom_smooth(na.rm = TRUE, method = 'lm', formula = y ~ x)+
+  scale_y_continuous(breaks = c(seq(-15000, 15000, 5000)), limits = c(-15000, 15000)) +
+  ggtitle("Coal -- Residual Series After Removing Trend and Seasonality") +
+  labs(x = "Year", y = "Errors   (Thousand Short Tons)") +
+  theme_minimal()
+
+
+# Create a factored 'Month' variable for natural gas
+DF_Gas = DF_Gas %>%
+  mutate(Month = factor(Month))
+
+# Create a model for natural gas seasonality
+Gas_Season = lm(DF_Gas$Residuals ~ Month, data = DF_Gas)
+
+DF_Gas = DF_Gas %>%
+  mutate(Season = predict(Gas_Season, newdata = data.frame(Month = DF_Gas$Month))) %>%
+  mutate(Residuals.SE = Residuals - Season)
+
+# Natural gas residual series after removing trend and seasonality
+DF_Gas %>%
+  ggplot(aes(x = Time, y = Residuals.SE)) +
+  geom_point(na.rm = TRUE) +
+  geom_smooth(na.rm = TRUE, method = 'lm', formula = y ~ x)+
+  scale_y_continuous(breaks = c(seq(-500, 500, 100)), limits = c(-500, 500)) +
+  ggtitle("Natural Gas -- Residual Series After Removing Trend and Seasonality") +
+  labs(x = "Year", y = "Errors   (Billion Cubic Feet)") +
+  theme_minimal()
+```
+
+```{r}
+acf(DF_Coal$Residuals.SE, main = "Autocorrelation")
+
+pacf(DF_Coal$Residuals.SE, main = "Partial Autocorrelation")
+
+# AR(1) and Seasonal MA(1) model for estimation and removal of the trend / seasonality
+mod.fit.EST = sarima(DF_Coal$Residuals.SE, p = 1, d = 0, q = 0, P = 0, D = 0, Q = 1, S = 12)
+mod.fit.EST
+
+# Consolidate models for both trend and seasonality
+trend.mod = lm(Value ~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.334))
+                + Month * Before2008, data = DF_Coal)
+
+# Create a matrix of model coefficients - Remove intercept column
+X = model.matrix(trend.mod)[,-1]
+
+# Initialize new time values for forecasting
+newdat = data.frame(Month = c(6:12, 1:12, 1:5), Time = 2019.333 + (1:24)/12, Before2008 = rep(0, 24))
+
+# Create a new matrix of model coefficients - Remove intercept column
+new.X = model.matrix(~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.334))
+                + factor(Month)*Before2008, data = newdat)[,-1]
+
+# Forecast using the SARIMA model
+sarima.for(DF_Coal$Value, n.ahead = 24, p = 1, d = 0, q = 0, P = 0, D = 0, Q = 1, S = 12, xreg = X, newxreg = new.X)
+```
+
+```{r}
+
 ```
