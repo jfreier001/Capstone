@@ -18,6 +18,9 @@ library(ggplot2)
 library(tidyr)
 library(astsa)
 library(splines)
+
+library(zoo)
+library(vars)
 ```
 
 
@@ -90,11 +93,15 @@ DF_Gas = DF_Gas %>%
   filter(Month %in% c(1:12)) %>%
   filter(Description == "Natural Gas Consumption") %>%
   filter(complete.cases(.))
+```
 
-
+```{r}
 # Create a time series object
-DF_CoalTS = ts(DF_Coal$Value, start = c(1973, 1), frequency = 12)
-DF_GasTS = ts(DF_Gas$Value, start = c(1973, 1), frequency = 12)
+DF_CoalTS = na.approx(ts(DF_Coal$Value, start = c(1973, 1), end = c(2019, 10), frequency = 12))
+DF_GasTS = na.approx(ts(DF_Gas$Value, start = c(1973, 1), end = c(2019, 10), frequency = 12))
+
+x = cbind(DF_CoalTS, DF_GasTS)
+plot.ts(x , main = "Coal and Natural Gas")
 ```
 
 ```{r}
