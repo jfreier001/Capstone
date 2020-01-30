@@ -27,7 +27,7 @@ library(vars)
 ```{r}
 # Read the .csv files into R
 Data_Coal = read.csv(file = 'MER_T06_01.csv', header = FALSE)
-Data_Gas = read.csv(file = 'MER_T04_01.csv', header = FALSE)
+Data_NatGas = read.csv(file = 'MER_T04_01.csv', header = FALSE)
 
 
 # Transform coal data into a data frame
@@ -38,34 +38,34 @@ DF_Coal = data.frame(Date = Data_Coal$V2,
                 MSN = Data_Coal$V1)
 
 # Transform natural gas data into a data frame
-DF_Gas = data.frame(Date = Data_Gas$V2,
-                Value = Data_Gas$V3,
-                Units = Data_Gas$V6,
-                Description = Data_Gas$V5,
-                MSN = Data_Gas$V1)
+DF_NatGas = data.frame(Date = Data_NatGas$V2,
+                Value = Data_NatGas$V3,
+                Units = Data_NatGas$V6,
+                Description = Data_NatGas$V5,
+                MSN = Data_NatGas$V1)
 
 
 # Extract relevant rows and reindex
 DF_Coal = DF_Coal[-1,]
 rownames(DF_Coal) = NULL
 
-DF_Gas = DF_Gas[-1,]
-rownames(DF_Gas) = NULL
+DF_NatGas = DF_NatGas[-1,]
+rownames(DF_NatGas) = NULL
 
 
 # Turn entries into numeric values
 DF_Coal$Date = as.numeric(as.character(DF_Coal$Date))
 DF_Coal$Value = as.numeric(as.character(DF_Coal$Value))
 
-DF_Gas$Date = as.numeric(as.character(DF_Gas$Date))
-DF_Gas$Value = as.numeric(as.character(DF_Gas$Value))
+DF_NatGas$Date = as.numeric(as.character(DF_NatGas$Date))
+DF_NatGas$Value = as.numeric(as.character(DF_NatGas$Value))
 
 
 # Separate 'Date' variable into 'Year' and 'Month'
 DF_Coal = DF_Coal %>%
   separate(Date, c("Year", "Month"), sep = 4, remove = TRUE, convert = TRUE)
 
-DF_Gas = DF_Gas %>%
+DF_NatGas = DF_NatGas %>%
   separate(Date, c("Year", "Month"), sep = 4, remove = TRUE, convert = TRUE)
 
 
@@ -73,14 +73,14 @@ DF_Gas = DF_Gas %>%
 DF_Coal = DF_Coal %>%
   mutate(Time = Year + (Month - 1) / 12)
 
-DF_Gas = DF_Gas %>%
+DF_NatGas = DF_NatGas %>%
   mutate(Time = Year + (Month - 1) / 12)
 
 
 # Reorder columns
 DF_Coal = DF_Coal[c(1, 2, 7, 3, 4, 5, 6)]
 
-DF_Gas = DF_Gas[c(1, 2, 7, 3, 4, 5, 6)]
+DF_NatGas = DF_NatGas[c(1, 2, 7, 3, 4, 5, 6)]
 
 
 # Filter out annual totals, revelant variables, and incomplete cases
@@ -89,7 +89,7 @@ DF_Coal = DF_Coal %>%
   filter(Description == "Coal Consumption") %>%
   filter(complete.cases(.))
 
-DF_Gas = DF_Gas %>%
+DF_NatGas = DF_NatGas %>%
   filter(Month %in% c(1:12)) %>%
   filter(Description == "Natural Gas Consumption") %>%
   filter(complete.cases(.))
@@ -110,7 +110,7 @@ DF_Coal %>%
   theme_minimal()
 
 # Plot the time series natural gas data
-DF_Gas %>%
+DF_NatGas %>%
   ggplot(aes(x = Time, y = Value)) +
   geom_point(size = 1) +
   geom_line() +
@@ -143,13 +143,13 @@ DF_Coal %>%
 
 # Natural Gas Trend - Spline Fit
 splineTrendGas = lm(Value ~ bs(Time, degree = 2, knots = c(1980, 1985, 1995, 2000),
-                            Boundary.knots = c(1973, 2021.750)), data = DF_Gas)
+                            Boundary.knots = c(1973, 2021.750)), data = DF_NatGas)
 
-DF_Gas = DF_Gas %>%
+DF_NatGas = DF_NatGas %>%
   mutate(Trend = predict(splineTrendGas))
 
 # Plot the natural gas series with trend fit
-DF_Gas %>%
+DF_NatGas %>%
   ggplot(aes(x = Time, y = Value)) +
   geom_point() +
   scale_x_continuous(breaks = c(seq(1975, 2021, 5)), limits = c(1973, 2021)) +
@@ -176,11 +176,11 @@ DF_Coal %>%
 
 
 # De-Trended Gas - Spline Fit
-DF_Gas = DF_Gas %>%
+DF_NatGas = DF_NatGas %>%
   mutate(Residuals = Value - Trend)
 
 # Plot coal data after removing trend (by Month and Year)
-DF_Gas %>%
+DF_NatGas %>%
   ggplot(aes(x = factor(Month), y = Residuals, color = factor(Year))) +
   geom_line(aes(group = factor(Year)), size = 0.75) +
   scale_y_continuous(breaks = c(seq(-750, 1250, 250)), limits = c(-750, 1250)) +
@@ -217,18 +217,18 @@ DF_Coal %>%
 
 
 # Create a factored 'Month' variable for natural gas
-DF_Gas = DF_Gas %>%
+DF_NatGas = DF_NatGas %>%
   mutate(Month = factor(Month))
 
 # Create a model for natural gas seasonality
-Gas_Season = lm(DF_Gas$Residuals ~ Month, data = DF_Gas)
+Gas_Season = lm(DF_NatGas$Residuals ~ Month, data = DF_NatGas)
 
-DF_Gas = DF_Gas %>%
-  mutate(Season = predict(Gas_Season, newdata = data.frame(Month = DF_Gas$Month))) %>%
+DF_NatGas = DF_NatGas %>%
+  mutate(Season = predict(Gas_Season, newdata = data.frame(Month = DF_NatGas$Month))) %>%
   mutate(Residuals.SE = Residuals - Season)
 
 # Natural gas residual series after removing trend and seasonality
-DF_Gas %>%
+DF_NatGas %>%
   ggplot(aes(x = Time, y = Residuals.SE)) +
   geom_point(na.rm = TRUE) +
   geom_smooth(na.rm = TRUE, method = 'lm', formula = y ~ x)+
@@ -243,7 +243,7 @@ DF_Gas %>%
 
 # Create a time series object
 Coal = ts(DF_Coal$Residuals.SE, start = c(1973, 1), end = c(2019, 10), frequency = 12)
-Natural_Gas = ts(DF_Gas$Residuals.SE, start = c(1973, 1), end = c(2019, 10), frequency = 12)
+Natural_Gas = ts(DF_NatGas$Residuals.SE, start = c(1973, 1), end = c(2019, 10), frequency = 12)
 
 # Plot the two time series
 x = cbind(Coal, Natural_Gas)
@@ -266,10 +266,10 @@ plot(irf(fitvar1, impulse = "Natural_Gas", ortho = TRUE))
 # Plot of the forecast error variance decoposition
 plot(fevd(fitvar1, n.ahead = 24))
 
-# Plot of predictions
+# Plot of predictions for the next two years
 predictions <- predict(fitvar1, n.ahead = 24, ci = 0.95)
-plot(predictions, xlim = c(2015, 2021.750), names = "Coal")
-plot(predictions, xlim = c(2015, 2021.750), names = "Natural_Gas")
+plot(predictions, xlim = c(450, 600), names = "Coal")
+plot(predictions, xlim = c(450, 600), names = "Natural_Gas")
 ```
 
 
@@ -277,28 +277,28 @@ plot(predictions, xlim = c(2015, 2021.750), names = "Natural_Gas")
 
 
 ```{r}
-# acf(DF_Coal$Residuals.SE, main = "Autocorrelation")
-# 
-# pacf(DF_Coal$Residuals.SE, main = "Partial Autocorrelation")
-# 
-# # AR(1) and Seasonal MA(1) model for estimation and removal of the trend / seasonality
-# mod.fit.EST = sarima(DF_Coal$Residuals.SE, p = 1, d = 0, q = 0, P = 0, D = 0, Q = 1, S = 12)
-# mod.fit.EST
-# 
-# # Consolidate models for both trend and seasonality
-# trend.mod = lm(Value ~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.334))
-#                 + Month * Before2008, data = DF_Coal)
-# 
-# # Create a matrix of model coefficients - Remove intercept column
-# X = model.matrix(trend.mod)[,-1]
-# 
-# # Initialize new time values for forecasting
-# newdat = data.frame(Month = c(6:12, 1:12, 1:5), Time = 2019.333 + (1:24)/12, Before2008 = rep(0, 24))
-# 
-# # Create a new matrix of model coefficients - Remove intercept column
-# new.X = model.matrix(~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.334))
-#                 + factor(Month)*Before2008, data = newdat)[,-1]
-# 
-# # Forecast using the SARIMA model
-# sarima.for(DF_Coal$Value, n.ahead = 24, p = 1, d = 0, q = 0, P = 0, D = 0, Q = 1, S = 12, xreg = X, newxreg = new.X)
+acf(DF_Coal$Residuals.SE, main = "Coal - Autocorrelation")
+
+pacf(DF_Coal$Residuals.SE, main = "Coal - Partial Autocorrelation")
+
+# AR(1) and Seasonal MA(1) model for estimation and removal of the trend / seasonality
+mod.fit.EST = sarima(DF_Coal$Residuals.SE, p = 1, d = 0, q = 0, P = 0, D = 0, Q = 1, S = 12)
+mod.fit.EST
+
+# Consolidate models for both trend and seasonality
+trend.mod = lm(Value ~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.334))
+                + Month * Before2008, data = DF_Coal)
+
+# Create a matrix of model coefficients - Remove intercept column
+X = model.matrix(trend.mod)[,-1]
+
+# Initialize new time values for forecasting
+newdat = data.frame(Month = c(6:12, 1:12, 1:5), Time = 2019.333 + (1:24)/12, Before2008 = rep(0, 24))
+
+# Create a new matrix of model coefficients - Remove intercept column
+new.X = model.matrix(~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.334))
+                + factor(Month)*Before2008, data = newdat)[,-1]
+
+# Forecast using the SARIMA model
+sarima.for(DF_Coal$Value, n.ahead = 24, p = 1, d = 0, q = 0, P = 0, D = 0, Q = 1, S = 12, xreg = X, newxreg = new.X)
 ```
