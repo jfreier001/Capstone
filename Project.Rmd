@@ -264,56 +264,69 @@ plot(irf(fitvar1, impulse = "Natural_Gas", ortho = TRUE))
 # Plot of the forecast error variance decoposition
 plot(fevd(fitvar1, n.ahead = 24))
 
-# Plot of predictions for the next two years
+# Plot of residual predictions for the next two years
 predictions <- predict(fitvar1, n.ahead = 24, ci = 0.95)
 plot(predictions, xlim = c(450, 600), names = "Coal")
 plot(predictions, xlim = c(450, 600), names = "Natural_Gas")
 ```
 
 ```{r}
+# Combined trend and seasonality model for coal
 trend.mod.coal = lm(Value ~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.750)) 
                     + Month * Before2008, data = DF_Coal)
 
+# Combined trend and seasonality model for natural gas
 trend.mod.natgas = lm(Value ~ bs(Time, degree = 2, knots = c(1980, 1985, 1995, 2000), Boundary.knots = c(1973, 2021.750)) 
                       + Month, data = DF_NatGas)
 
+# New values for forecasting the next two years
 newdat = data.frame(Month = as.factor(c(10:12, 1:12, 1:9)), Time = 2019.333 + (1:24)/12, Before2008 = as.factor(rep("NO", 24)))
 
-predict.mod.coal = predict(trend.mod.coal, newdat)
-predict.mod.natgas = predict(trend.mod.natgas, newdat)
+# Model predictions (treand and seasonality) for the forecasted values
+forecast.mod.coal = predict(trend.mod.coal, newdat)
+forecast.mod.natgas = predict(trend.mod.natgas, newdat)
 
-predict.mod.coal
-predict.mod.natgas
+# Add the forecasted model values to predicted correlated errors
+predictions[1]$fcst$Coal = predictions[1]$fcst$Coal + forecast.mod.coal
+predictions[1]$fcst$Natural_Gas = predictions[1]$fcst$Natural_Gas + forecast.mod.natgas
+
+# Replace observed correlated errors with observed values
+predictions$endog[,1] = DF_Coal$Value
+predictions$endog[,2] = DF_NatGas$Value
+
+# Create plots of the finalized forecasted values
+plot(predictions, xlim = c(450, 600), names = "Coal")
+plot(predictions, xlim = c(450, 600), names = "Natural_Gas")
 ```
 
 
 
 
 ```{r}
-#################### SARIMA Model ####################
-
-acf(DF_Coal$Residuals.SE, main = "Coal - Autocorrelation")
-
-pacf(DF_Coal$Residuals.SE, main = "Coal - Partial Autocorrelation")
-
-# AR(1) and Seasonal MA(1) model for estimation and removal of the trend / seasonality
-mod.fit.EST = sarima(DF_Coal$Residuals.SE, p = 1, d = 0, q = 0, P = 0, D = 0, Q = 1, S = 12)
-mod.fit.EST
-
-# Consolidate models for both trend and seasonality
-trend.mod = lm(Value ~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.750))
-                + Month * Before2008, data = DF_Coal)
-
-# Create a matrix of model coefficients - Remove intercept column
-X = model.matrix(trend.mod)[,-1]
-
-# Initialize new time values for forecasting
-newdat = data.frame(Month = c(10:12, 1:12, 1:9), Time = 2019.333 + (1:24)/12, Before2008 = rep(0, 24))
-
-# Create a new matrix of model coefficients - Remove intercept column
-new.X = model.matrix(~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.750))
-                + factor(Month) * Before2008, data = newdat)[,-1]
-
-# Forecast using the SARIMA model
-sarima.for(DF_Coal$Value, n.ahead = 24, p = 1, d = 0, q = 0, P = 0, D = 0, Q = 1, S = 12, xreg = X, newxreg = new.X)
+# #################### SARIMA Model ####################
+# 
+# acf(DF_Coal$Residuals.SE, main = "Coal - Autocorrelation")
+# 
+# pacf(DF_Coal$Residuals.SE, main = "Coal - Partial Autocorrelation")
+# 
+# # AR(1) and Seasonal MA(1) model for estimation and removal of the trend / seasonality
+# mod.fit.EST = sarima(DF_Coal$Residuals.SE, p = 1, d = 0, q = 0, P = 0, D = 0, Q = 1, S = 12)
+# mod.fit.EST
+# 
+# # Consolidate models for both trend and seasonality
+# trend.mod = lm(Value ~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.750))
+#                 + Month * Before2008, data = DF_Coal)
+# 
+# # Create a matrix of model coefficients - Remove intercept column
+# X = model.matrix(trend.mod)[,-1]
+# 
+# # Initialize new time values for forecasting
+# newdat = data.frame(Month = c(10:12, 1:12, 1:9), Time = 2019.333 + (1:24)/12, Before2008 = rep(0, 24))
+# 
+# # Create a new matrix of model coefficients - Remove intercept column
+# new.X = model.matrix(~ bs(Time, degree = 2, knots = c(2006, 2010), Boundary.knots = c(1973, 2021.750))
+#                 + factor(Month) * Before2008, data = newdat)[,-1]
+# 
+# # Forecast using the SARIMA model
+# sarima.for(DF_Coal$Value, n.ahead = 24, p = 1, d = 0, q = 0, P = 0, D = 0, Q = 1, S = 12, xreg = X, newxreg = new.X)
 ```
