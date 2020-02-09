@@ -18,7 +18,6 @@ library(ggplot2)
 library(tidyr)
 library(astsa)
 library(splines)
-
 library(zoo)
 library(vars)
 ```
@@ -172,6 +171,15 @@ DF_Coal %>%
   labs(x = "Month", y = "Coal Residuals   (Thousand Short Tons)", color = "Year") +
   theme_minimal()
 
+DF_Coal %>%
+  ggplot(aes(x = Time, y = Residuals)) +
+  geom_point() +
+  geom_line() +
+  scale_y_continuous(breaks = c(seq(-25000, 25000, 5000)), limits = c(-25000, 25000)) +
+  ggtitle("De-Trended Coal Observations") +
+  labs(x = "Month", y = "Coal Residuals   (Thousand Short Tons)", color = "Year") +
+  theme_minimal()
+
 
 # De-Trended Gas - Spline Fit
 DF_NatGas = DF_NatGas %>%
@@ -181,6 +189,15 @@ DF_NatGas = DF_NatGas %>%
 DF_NatGas %>%
   ggplot(aes(x = factor(Month), y = Residuals, color = factor(Year))) +
   geom_line(aes(group = factor(Year)), size = 0.75) +
+  scale_y_continuous(breaks = c(seq(-750, 1250, 250)), limits = c(-750, 1250)) +
+  ggtitle("De-Trended Natural Gas Observations") +
+  labs(x = "Month", y = "Natural Gas Residuals   (Billion Cubic Feet)", color = "Year") +
+  theme_minimal()
+
+DF_NatGas %>%
+  ggplot(aes(x = Time, y = Residuals)) +
+  geom_point() +
+  geom_line() +
   scale_y_continuous(breaks = c(seq(-750, 1250, 250)), limits = c(-750, 1250)) +
   ggtitle("De-Trended Natural Gas Observations") +
   labs(x = "Month", y = "Natural Gas Residuals   (Billion Cubic Feet)", color = "Year") +
