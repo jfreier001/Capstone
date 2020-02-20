@@ -175,6 +175,7 @@ DF_Coal %>%
   ggplot(aes(x = Time, y = Residuals)) +
   geom_point() +
   geom_line() +
+  geom_smooth(na.rm = TRUE, method = 'lm', formula = y ~ x) +
   scale_y_continuous(breaks = c(seq(-25000, 25000, 5000)), limits = c(-25000, 25000)) +
   ggtitle("De-Trended Coal Observations") +
   labs(x = "Month", y = "Coal Residuals   (Thousand Short Tons)", color = "Year") +
@@ -198,6 +199,7 @@ DF_NatGas %>%
   ggplot(aes(x = Time, y = Residuals)) +
   geom_point() +
   geom_line() +
+  geom_smooth(na.rm = TRUE, method = 'lm', formula = y ~ x) +
   scale_y_continuous(breaks = c(seq(-750, 1250, 250)), limits = c(-750, 1250)) +
   ggtitle("De-Trended Natural Gas Observations") +
   labs(x = "Month", y = "Natural Gas Residuals   (Billion Cubic Feet)", color = "Year") +
@@ -224,7 +226,7 @@ DF_Coal = DF_Coal %>%
 DF_Coal %>%
   ggplot(aes(x = Time, y = Residuals.SE)) +
   geom_point(na.rm = TRUE) +
-  geom_smooth(na.rm = TRUE, method = 'lm', formula = y ~ x)+
+  geom_smooth(na.rm = TRUE, method = 'lm', formula = y ~ x) +
   scale_y_continuous(breaks = c(seq(-15000, 15000, 5000)), limits = c(-15000, 15000)) +
   ggtitle("Coal -- Residual Series After Removing Trend and Seasonality") +
   labs(x = "Year", y = "Errors   (Thousand Short Tons)") +
@@ -246,7 +248,7 @@ DF_NatGas = DF_NatGas %>%
 DF_NatGas %>%
   ggplot(aes(x = Time, y = Residuals.SE)) +
   geom_point(na.rm = TRUE) +
-  geom_smooth(na.rm = TRUE, method = 'lm', formula = y ~ x)+
+  geom_smooth(na.rm = TRUE, method = 'lm', formula = y ~ x) +
   scale_y_continuous(breaks = c(seq(-500, 500, 100)), limits = c(-500, 500)) +
   ggtitle("Natural Gas -- Residual Series After Removing Trend and Seasonality") +
   labs(x = "Year", y = "Errors   (Billion Cubic Feet)") +
